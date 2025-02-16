@@ -3,7 +3,7 @@
   "name": "ChatGPT Memory Assistant",
   "version": "1.0",
   "description": "Stores and injects internal memory entries for ChatGPT using <MemorySave> tags.",
-  "permissions": ["storage", 
+  "permissions": [ 
     "scripting",
     "tabs",
     "storage"
