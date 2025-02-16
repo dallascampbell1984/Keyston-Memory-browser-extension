@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Memory Assistant</title>
-  <script src="popup.js"></script>
+    <title>Memory Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; width: 300px; padding: 10px; }
+        h2 { font-size: 16px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f4f4f4; margin: 5px 0; padding: 5px; border-radius: 5px; }
+    </style>
 </head>
 <body>
-  <h2>Memory Assistant Settings</h2>
-  <button id="syncMemory">Sync Memory</button>
+    <h2>Stored Memories</h2>
+    <ul id="memory-list">Loading...</ul>
+    <script src="popup.js"></script>
 </body>
 </html>
