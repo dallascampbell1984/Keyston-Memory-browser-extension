@@ -1,4 +1,4 @@
-{
+{ "action": { "default_popup": "popup.html" },
   "manifest_version": 3,
   "name": "ChatGPT Memory Assistant",
   "version": "1.0",
