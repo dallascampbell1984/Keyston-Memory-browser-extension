@@ -3,27 +3,42 @@
 
     if (chatMessages.length > 0) {
         chatMessages.forEach((message) => {
-            const observer = new MutationObserver((mutationsList) => {
+            const observer = new MutationObserver((mutationsList, obs) => {
                 mutationsList.forEach((mutation) => {
                     if (mutation.type === "childList" && mutation.target.innerText.trim() !== "") {
                         console.log("✅ New ChatGPT response detected:", mutation.target.innerText);
 
-                        // Extract memory entries using regex
-                        const memoryPattern = /<Keyston-Memory-Save[^>]*>(.*?)<\/Keyston-Memory-Save>/g;
-                        const matches = [...mutation.target.innerText.matchAll(memoryPattern)];
+                        // Stop observing temporarily to avoid infinite loops
+                        obs.disconnect();
 
-                        if (matches.length > 0) {
-                            let memories = [];
-                            matches.forEach(match => memories.push({ text: match[1], timestamp: Date.now() }));
+                        // Delay processing slightly to ensure the response fully loads
+                        setTimeout(() => {
+                            console.log("⏳ Waiting for response to fully load...");
 
-                            // Store memories in chrome.storage.local
-                            chrome.storage.local.get({ memories: [] }, function(result) {
-                                const storedMemories = result.memories.concat(memories);
-                                chrome.storage.local.set({ memories: storedMemories }, function() {
-                                    console.log("✅ Memories saved:", memories);
+                            // Extract memory entries using regex
+                            const memoryPattern = /<Keyston-Memory-Save[^>]*>(.*?)<\/Keyston-Memory-Save>/g;
+                            const matches = [...mutation.target.innerText.matchAll(memoryPattern)];
+
+                            if (matches.length > 0) {
+                                console.log("🔍 Found Keyston-Memory-Save tags. Extracting...");
+
+                                let memories = [];
+                                matches.forEach(match => memories.push({ text: match[1], timestamp: Date.now() }));
+
+                                // Store memories in chrome.storage.local
+                                chrome.storage.local.get({ memories: [] }, function(result) {
+                                    const storedMemories = result.memories.concat(memories);
+                                    chrome.storage.local.set({ memories: storedMemories }, function() {
+                                        console.log("✅ Memories saved successfully:", memories);
+                                    });
                                 });
-                            });
-                        }
+                            } else {
+                                console.log("❌ No Keyston-Memory-Save tags found in this response.");
+                            }
+
+                            // Resume observing after processing is complete
+                            observer.observe(message, { childList: true, subtree: true });
+                        }, 500); // Small delay to wait for full response
                     }
                 });
             });
@@ -31,7 +46,7 @@
             observer.observe(message, { childList: true, subtree: true });
         });
 
-        console.log("🔍 MutationObserver is now watching for ChatGPT responses.");
+        console.log("🔍 MutationObserver is now watching for all ChatGPT responses.");
     } else {
         console.log("⚠️ Could not find ChatGPT response nodes. Retrying in 2 seconds...");
         setTimeout(observeChatGPTResponses, 2000);
