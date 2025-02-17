@@ -8,7 +8,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Parse the URL to ensure it's a valid ChatGPT page
     const url = new URL(tab.url);
 
-    if (changeInfo.status === "complete" && url.hostname === "chat.openai.com") {
+    if (changeInfo.status === "complete" && url.hostname === "chatgpt.com") {
       console.log(`📌 Targeting ChatGPT tab: ${url.href}`);
 
       chrome.scripting.executeScript({
