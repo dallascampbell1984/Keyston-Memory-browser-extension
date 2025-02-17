@@ -10,7 +10,7 @@
   }
   window.__CHATGPT_MEMORY_ASSISTANT_LOADED = true;
 
-  console.log("📌 content.js loaded.");
+  console.log("📌 content.js loaded (Ensured Single Execution).");
 
   function getLastAssistantMessage() {
     const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
