@@ -3,16 +3,18 @@
 
     if (chatMessages.length > 0) {
         chatMessages.forEach((message) => {
+            let timeoutId;
+
             const observer = new MutationObserver((mutationsList, obs) => {
                 mutationsList.forEach((mutation) => {
                     if (mutation.type === "childList" && mutation.target.innerText.trim() !== "") {
-                        console.log("✅ New ChatGPT response detected:", mutation.target.innerText);
+                        console.log("✅ Detected a new ChatGPT response:", mutation.target.innerText);
 
-                        // Stop observing temporarily to avoid infinite loops
-                        obs.disconnect();
+                        // Reset the timeout each time a change is detected
+                        if (timeoutId) clearTimeout(timeoutId);
 
-                        // Delay processing slightly to ensure the response fully loads
-                        setTimeout(() => {
+                        // Set a delay to wait for the response to finish rendering
+                        timeoutId = setTimeout(() => {
                             console.log("⏳ Waiting for response to fully load...");
 
                             // Extract memory entries using regex
@@ -29,16 +31,13 @@
                                 chrome.storage.local.get({ memories: [] }, function(result) {
                                     const storedMemories = result.memories.concat(memories);
                                     chrome.storage.local.set({ memories: storedMemories }, function() {
-                                        console.log("✅ Memories saved successfully:", memories);
+                                        console.log("✅ Memory successfully saved:", memories);
                                     });
                                 });
                             } else {
                                 console.log("❌ No Keyston-Memory-Save tags found in this response.");
                             }
-
-                            // Resume observing after processing is complete
-                            observer.observe(message, { childList: true, subtree: true });
-                        }, 500); // Small delay to wait for full response
+                        }, 1000); // Wait 1 second after the last detected change
                     }
                 });
             });
@@ -46,7 +45,7 @@
             observer.observe(message, { childList: true, subtree: true });
         });
 
-        console.log("🔍 MutationObserver is now watching for all ChatGPT responses.");
+        console.log("🔍 MutationObserver is now watching for fully loaded ChatGPT responses.");
     } else {
         console.log("⚠️ Could not find ChatGPT response nodes. Retrying in 2 seconds...");
         setTimeout(observeChatGPTResponses, 2000);
