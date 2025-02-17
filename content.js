@@ -1,37 +1,16 @@
 ﻿(() => {
-  // Skip if in an iframe.
   if (window.top !== window.self) {
     console.log("Skipping injection in iframe.");
     return;
   }
-  
-  // Prevent multiple injections.
+
   if (window.__CHATGPT_MEMORY_ASSISTANT_LOADED) {
     console.log("Script already loaded. Skipping setup...");
     return;
   }
   window.__CHATGPT_MEMORY_ASSISTANT_LOADED = true;
-  
-  console.log("📌 content.js loaded.");
 
-  /**
-   * Helper: Wait for an element matching the selector.
-   */
-  function waitForElement(selector, timeout = 10000) {
-    return new Promise((resolve, reject) => {
-      const interval = setInterval(() => {
-        const el = document.querySelector(selector);
-        if (el) {
-          clearInterval(interval);
-          resolve(el);
-        }
-      }, 500);
-      setTimeout(() => {
-        clearInterval(interval);
-        reject(new Error("Timeout waiting for element: " + selector));
-      }, timeout);
-    });
-  }
+  console.log("📌 content.js loaded.");
 
   /**
    * Retrieves the last assistant message's text.
@@ -45,75 +24,60 @@
   }
 
   /**
-   * Parses the final text for <MemorySave> tags and saves any found memory to chrome.storage.local.
+   * Parses <MemorySave> tags and saves found memory to chrome.storage.local.
    */
   function parseMemoryTagsFromText(finalText) {
-    console.log("Parsing memory tags from final text:");
-    console.log(finalText);
-    // Regex that captures across newlines
+    console.log("Parsing memory tags from final text:", finalText);
     const memoryPattern = /<MemorySave[^>]*>([\s\S]*?)<\/MemorySave>/g;
     const matches = [...finalText.matchAll(memoryPattern)];
+
     if (matches.length > 0) {
       const memoriesFound = matches.map(match => match[1].trim());
       console.log("Found MemorySave tags:", memoriesFound);
+
       chrome.storage.local.get({ memories: [] }, function(result) {
         const newMemories = memoriesFound.map(mem => ({
           text: mem,
           timestamp: Date.now()
         }));
         const updated = result.memories.concat(newMemories);
+
         chrome.storage.local.set({ memories: updated }, function() {
           console.log("✅ Memory saved:", newMemories);
         });
       });
     } else {
-      console.log("No MemorySave tags found in final response.");
+      console.log("No MemorySave tags found.");
     }
   }
 
-  // Global variable to store the last processed response to avoid duplicates.
   let lastProcessedResponse = "";
 
   /**
-   * Monitors the Stop streaming button state.
-   * When it disappears, waits 2 seconds then retrieves the final assistant message.
+   * MutationObserver to watch for new assistant messages.
    */
-  async function monitorStreamingState() {
-    try {
-      await waitForElement('button[aria-label="Send prompt"]');
-      console.log("✅ Send button is available.");
-      
-      let wasStreaming = false;
-      setInterval(() => {
-        // Check for the Stop streaming button.
-        const stopButton = document.querySelector('button[aria-label="Stop streaming"]');
-        const isStreaming = !!stopButton;
-        
-        if (isStreaming !== wasStreaming) {
-          if (isStreaming) {
-            console.log("🛑 ChatGPT started streaming its response.");
-          } else {
-            console.log("✅ ChatGPT finished streaming. Waiting 2 seconds for final text...");
-            setTimeout(() => {
-              const finalResponse = getLastAssistantMessage();
-              console.log("Final assistant message:");
-              console.log(finalResponse);
-              // Only process if nonempty and not already processed.
-              if (finalResponse && finalResponse !== lastProcessedResponse) {
-                lastProcessedResponse = finalResponse;
-                parseMemoryTagsFromText(finalResponse);
-              } else {
-                console.log("Response already processed or empty.");
-              }
-            }, 2000);
-          }
-          wasStreaming = isStreaming;
-        }
-      }, 500);
-    } catch (error) {
-      console.error("Error in monitorStreamingState:", error);
+  function setupMutationObserver() {
+    const chatContainer = document.querySelector('[data-message-author-role="assistant"]')?.parentElement;
+
+    if (!chatContainer) {
+      console.error("❌ Chat container not found.");
+      return;
     }
+
+    const observer = new MutationObserver(() => {
+      setTimeout(() => {
+        const finalResponse = getLastAssistantMessage();
+        if (finalResponse && finalResponse !== lastProcessedResponse) {
+          lastProcessedResponse = finalResponse;
+          parseMemoryTagsFromText(finalResponse);
+        }
+      }, 2000);
+    });
+
+    observer.observe(chatContainer, { childList: true, subtree: true });
+
+    console.log("👀 MutationObserver set up for response detection.");
   }
-  
-  window.addEventListener("load", monitorStreamingState);
+
+  window.addEventListener("load", setupMutationObserver);
 })();
