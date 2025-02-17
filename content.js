@@ -1,55 +1,52 @@
-﻿function observeChatGPTResponses() {
-    const chatMessages = document.querySelectorAll("div[data-message-author-role='assistant']");
+﻿# Logs the last ChatGPT response and searches for <MemorySave> tags.
 
-    if (chatMessages.length > 0) {
-        chatMessages.forEach((message) => {
-            let timeoutId;
+function observeChatGPTResponses() {
+    const chatContainer = document.querySelector("div[class*='chat']") || document.body; // Adjust as needed
 
-            const observer = new MutationObserver((mutationsList, obs) => {
-                mutationsList.forEach((mutation) => {
-                    if (mutation.type === "childList" && mutation.target.innerText.trim() !== "") {
-                        console.log("✅ Detected a new ChatGPT response:", mutation.target.innerText);
-
-                        // Reset the timeout each time a change is detected
-                        if (timeoutId) clearTimeout(timeoutId);
-
-                        // Set a delay to wait for the response to finish rendering
-                        timeoutId = setTimeout(() => {
-                            console.log("⏳ Waiting for response to fully load...");
-
-                            // Extract memory entries using regex
-                            const memoryPattern = /<Keyston-Memory-Save[^>]*>(.*?)<\/Keyston-Memory-Save>/g;
-                            const matches = [...mutation.target.innerText.matchAll(memoryPattern)];
-
-                            if (matches.length > 0) {
-                                console.log("🔍 Found Keyston-Memory-Save tags. Extracting...");
-
-                                let memories = [];
-                                matches.forEach(match => memories.push({ text: match[1], timestamp: Date.now() }));
-
-                                // Store memories in chrome.storage.local
-                                chrome.storage.local.get({ memories: [] }, function(result) {
-                                    const storedMemories = result.memories.concat(memories);
-                                    chrome.storage.local.set({ memories: storedMemories }, function() {
-                                        console.log("✅ Memory successfully saved:", memories);
-                                    });
-                                });
-                            } else {
-                                console.log("⚠️ No Keyston-Memory-Save tags found in this response.");
-                            }
-                        }, 1000); // Wait 1 second after the last detected change
-                    }
-                });
-            });
-
-            observer.observe(message, { childList: true, subtree: true });
-        });
-
-        console.log("🔍 MutationObserver is now watching for all ChatGPT responses.");
-    } else {
-        console.log("⚠️ Could not find ChatGPT response nodes. Retrying in 2 seconds...");
+    if (!chatContainer) {
+        console.log("⚠️ No chat container found. Retrying in 2 seconds...");
         setTimeout(observeChatGPTResponses, 2000);
+        return;
     }
+
+    const observer = new MutationObserver((mutations) => {
+        let lastResponse = null;
+        
+        for (const mutation of mutations) {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    lastResponse = node.innerText.trim() ? node.innerText : lastResponse;
+                }
+            });
+        }
+
+        if (lastResponse) {
+            console.log("✅ Last ChatGPT response detected:\\n" + lastResponse);
+
+            // Check for <MemorySave> tags
+            const memoryPattern = /<MemorySave[^>]*>(.*?)<\\/MemorySave>/g;
+            const matches = [...lastResponse.matchAll(memoryPattern)];
+
+            if (matches.length > 0) {
+                console.log("🔍 Found MemorySave tags:");
+                const memories = matches.map(match => ({ text: match[1], timestamp: Date.now() }));
+                memories.forEach(m => console.log("📌 " + m.text));
+
+                // Store them in chrome.storage.local
+                chrome.storage.local.get({ memories: [] }, function(result) {
+                    const updated = result.memories.concat(memories);
+                    chrome.storage.local.set({ memories: updated }, function() {
+                        console.log("✅ Memory saved:", memories);
+                    });
+                });
+            } else {
+                console.log("⚠️ No <MemorySave> tags found.");
+            }
+        }
+    });
+
+    observer.observe(chatContainer, { childList: true, subtree: true });
+    console.log("🔍 Now watching for the last ChatGPT response...");
 }
 
 // Start observing
