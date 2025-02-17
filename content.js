@@ -48,23 +48,19 @@
   let lastProcessedResponse = "";
 
   function monitorStreamingState() {
-    const stopButton = document.querySelector('button[aria-label="Stop streaming"]');
-
-    if (!stopButton) {
-      console.error("❌ 'Stop Streaming' button not found. ChatGPT layout may have changed.");
-      return;
-    }
-
     let wasStreaming = false;
 
-    const observer = new MutationObserver(() => {
-      const isStreaming = document.querySelector('button[aria-label="Stop streaming"]') !== null;
+    const interval = setInterval(() => {
+      const stopButton = document.querySelector('button[aria-label="Stop streaming"]');
+      const isStreaming = !!stopButton;
 
       if (isStreaming !== wasStreaming) {
         if (isStreaming) {
           console.log("🛑 ChatGPT started streaming its response.");
         } else {
           console.log("✅ ChatGPT finished streaming. Waiting 2 seconds for final text...");
+          clearInterval(interval);
+
           setTimeout(() => {
             const finalResponse = getLastAssistantMessage();
             if (finalResponse && finalResponse !== lastProcessedResponse) {
@@ -75,11 +71,7 @@
         }
         wasStreaming = isStreaming;
       }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    console.log("👀 Watching 'Stop Streaming' button with MutationObserver.");
+    }, 500);
   }
 
   window.addEventListener("load", monitorStreamingState);
