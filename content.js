@@ -10,7 +10,7 @@
   }
   window.__CHATGPT_MEMORY_ASSISTANT_LOADED = true;
 
-  console.log("📌 content.js loaded (Ensured Single Execution).");
+  console.log("📌 content.js loaded.");
 
   function getLastAssistantMessage() {
     const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
@@ -50,7 +50,7 @@
   function monitorStreamingState() {
     let wasStreaming = false;
 
-    const interval = setInterval(() => {
+    setInterval(() => {
       const stopButton = document.querySelector('button[aria-label="Stop streaming"]');
       const isStreaming = !!stopButton;
 
@@ -59,7 +59,6 @@
           console.log("🛑 ChatGPT started streaming its response.");
         } else {
           console.log("✅ ChatGPT finished streaming. Waiting 2 seconds for final text...");
-          clearInterval(interval);
 
           setTimeout(() => {
             const finalResponse = getLastAssistantMessage();
@@ -71,7 +70,7 @@
         }
         wasStreaming = isStreaming;
       }
-    }, 500);
+    }, 500); // Keep this running continuously
   }
 
   window.addEventListener("load", monitorStreamingState);
