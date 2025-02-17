@@ -1,41 +1,39 @@
 ﻿function observeChatGPTResponses() {
-    const targetNodes = document.querySelectorAll('div[data-message-author-role="assistant"], div[data-message-id]');
+    const chatMessages = document.querySelectorAll('div[data-message-author-role=\"assistant\"]');
 
-    if (targetNodes.length > 0) {
-        targetNodes.forEach((targetNode) => {
+    if (chatMessages.length > 0) {
+        chatMessages.forEach((message) => {
             const observer = new MutationObserver((mutationsList) => {
-                for (let mutation of mutationsList) {
-                    if (mutation.type === 'childList') {
-                        console.log('✅ New ChatGPT response detected:');
-                        console.log(mutation.target.innerText);
+                mutationsList.forEach((mutation) => {
+                    if (mutation.type === 'childList' && mutation.target.innerText.trim() !== \"\") {
+                        console.log(\"✅ New ChatGPT response detected:\", mutation.target.innerText);
 
-                        // Extract <Keyston-Memory-Save> elements
-                        const memoryElements = mutation.target.querySelectorAll("Keyston-Memory-Save");
+                        // Extract memory entries using regex
+                        const memoryPattern = /<Keyston-Memory-Save[^>]*>(.*?)<\/Keyston-Memory-Save>/g;
+                        const matches = [...mutation.target.innerText.matchAll(memoryPattern)];
 
-                        if (memoryElements.length > 0) {
+                        if (matches.length > 0) {
                             let memories = [];
-                            memoryElements.forEach(element => {
-                                memories.push({ text: element.innerText, timestamp: Date.now() });
-                            });
+                            matches.forEach(match => memories.push({ text: match[1], timestamp: Date.now() }));
 
                             // Store memories in chrome.storage.local
                             chrome.storage.local.get({ memories: [] }, function(result) {
                                 const storedMemories = result.memories.concat(memories);
                                 chrome.storage.local.set({ memories: storedMemories }, function() {
-                                    console.log("✅ Memories saved:", memories);
+                                    console.log(\"✅ Memories saved:\", memories);
                                 });
                             });
                         }
                     }
-                }
+                });
             });
 
-            observer.observe(targetNode, { childList: true, subtree: true });
+            observer.observe(message, { childList: true, subtree: true });
         });
 
-        console.log('🔍 MutationObserver is now watching for ChatGPT responses.');
+        console.log(\"🔍 MutationObserver is now watching for ChatGPT responses.\");
     } else {
-        console.log('⚠️ Could not find the target node. Retrying in 2 seconds...');
+        console.log(\"⚠️ Could not find ChatGPT response nodes. Retrying in 2 seconds...\");
         setTimeout(observeChatGPTResponses, 2000);
     }
 }
