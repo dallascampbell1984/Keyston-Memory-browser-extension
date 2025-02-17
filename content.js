@@ -35,7 +35,7 @@
                                     });
                                 });
                             } else {
-                                console.log("❌ No Keyston-Memory-Save tags found in this response.");
+                                console.log("⚠️ No Keyston-Memory-Save tags found in this response.");
                             }
                         }, 1000); // Wait 1 second after the last detected change
                     }
@@ -45,7 +45,7 @@
             observer.observe(message, { childList: true, subtree: true });
         });
 
-        console.log("🔍 MutationObserver is now watching for fully loaded ChatGPT responses.");
+        console.log("🔍 MutationObserver is now watching for all ChatGPT responses.");
     } else {
         console.log("⚠️ Could not find ChatGPT response nodes. Retrying in 2 seconds...");
         setTimeout(observeChatGPTResponses, 2000);
