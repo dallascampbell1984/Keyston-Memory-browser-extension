@@ -12,9 +12,6 @@
 
   console.log("📌 content.js loaded.");
 
-  /**
-   * Retrieves the last assistant message's text.
-   */
   function getLastAssistantMessage() {
     const messages = document.querySelectorAll('[data-message-author-role="assistant"]');
     if (messages.length > 0) {
@@ -23,9 +20,6 @@
     return "";
   }
 
-  /**
-   * Parses <MemorySave> tags and saves found memory to chrome.storage.local.
-   */
   function parseMemoryTagsFromText(finalText) {
     console.log("Parsing memory tags from final text:", finalText);
     const memoryPattern = /<MemorySave[^>]*>([\s\S]*?)<\/MemorySave>/g;
@@ -53,31 +47,40 @@
 
   let lastProcessedResponse = "";
 
-  /**
-   * MutationObserver to watch for new assistant messages.
-   */
-  function setupMutationObserver() {
-    const chatContainer = document.querySelector('[data-message-author-role="assistant"]')?.parentElement;
+  function monitorStreamingState() {
+    const stopButton = document.querySelector('button[aria-label="Stop streaming"]');
 
-    if (!chatContainer) {
-      console.error("❌ Chat container not found.");
+    if (!stopButton) {
+      console.error("❌ 'Stop Streaming' button not found. ChatGPT layout may have changed.");
       return;
     }
 
+    let wasStreaming = false;
+
     const observer = new MutationObserver(() => {
-      setTimeout(() => {
-        const finalResponse = getLastAssistantMessage();
-        if (finalResponse && finalResponse !== lastProcessedResponse) {
-          lastProcessedResponse = finalResponse;
-          parseMemoryTagsFromText(finalResponse);
+      const isStreaming = document.querySelector('button[aria-label="Stop streaming"]') !== null;
+
+      if (isStreaming !== wasStreaming) {
+        if (isStreaming) {
+          console.log("🛑 ChatGPT started streaming its response.");
+        } else {
+          console.log("✅ ChatGPT finished streaming. Waiting 2 seconds for final text...");
+          setTimeout(() => {
+            const finalResponse = getLastAssistantMessage();
+            if (finalResponse && finalResponse !== lastProcessedResponse) {
+              lastProcessedResponse = finalResponse;
+              parseMemoryTagsFromText(finalResponse);
+            }
+          }, 2000);
         }
-      }, 2000);
+        wasStreaming = isStreaming;
+      }
     });
 
-    observer.observe(chatContainer, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true });
 
-    console.log("👀 MutationObserver set up for response detection.");
+    console.log("👀 Watching 'Stop Streaming' button with MutationObserver.");
   }
 
-  window.addEventListener("load", setupMutationObserver);
+  window.addEventListener("load", monitorStreamingState);
 })();
